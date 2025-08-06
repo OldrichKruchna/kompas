@@ -43,8 +43,9 @@
             background: radial-gradient(circle, #ffffff, #f0f0f0);
             border: 8px solid #333;
             box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
-            will-change: border-color, box-shadow;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.05s linear;
+            will-change: transform, border-color, box-shadow;
+            transform-origin: center center;
         }
 
         .compass.north-detected {
@@ -109,8 +110,7 @@
             height: 120px;
             transform: translate(-50%, -50%);
             transform-origin: center center;
-            transition: transform 0.05s linear;
-            will-change: transform;
+            /* Needle stays fixed pointing north - no transitions needed */
         }
 
         .needle::before {
@@ -254,17 +254,11 @@
         
         <div class="compass" id="compass">
             <div class="compass-face">
-                <!-- Direction markers -->
-                <div class="direction-marker north"></div>
-                <div class="direction-marker major" style="top: 10px; right: 50%; transform: translateX(50%) rotate(90deg);"></div>
-                <div class="direction-marker major" style="bottom: 10px; left: 50%; transform: translateX(-50%) rotate(180deg);"></div>
-                <div class="direction-marker major" style="top: 50%; left: 10px; transform: translateY(-50%) rotate(270deg);"></div>
-                
-                <!-- Minor direction markers -->
-                <div class="direction-marker" style="top: 10px; right: 30%; transform: translateX(50%) rotate(45deg);"></div>
-                <div class="direction-marker" style="top: 30%; right: 10px; transform: translateY(-50%) rotate(135deg);"></div>
-                <div class="direction-marker" style="bottom: 30%; right: 10px; transform: translateY(50%) rotate(225deg);"></div>
-                <div class="direction-marker" style="bottom: 10px; right: 30%; transform: translateX(50%) rotate(315deg);"></div>
+                <!-- Clean cardinal direction markers only -->
+                <div class="direction-marker north" style="top: 10px; left: 50%; transform: translateX(-50%);"></div>
+                <div class="direction-marker major" style="top: 50%; right: 10px; transform: translateY(-50%);"></div>
+                <div class="direction-marker major" style="bottom: 10px; left: 50%; transform: translateX(-50%);"></div>
+                <div class="direction-marker major" style="top: 50%; left: 10px; transform: translateY(-50%);"></div>
                 
                 <!-- Direction labels -->
                 <div class="direction-text north">N</div>
@@ -507,11 +501,20 @@
                 heading = ((heading % 360) + 360) % 360;
                 this.currentHeading = heading;
 
+                // The needle should always point north, so we rotate the compass face
+                // in the opposite direction of the device heading
+                const compassRotation = -heading;
+
                 // Use requestAnimationFrame for smooth updates
                 requestAnimationFrame(() => {
-                    // Update needle rotation with hardware acceleration
-                    this.needle.style.transform = `translate(-50%, -50%) rotate(${heading}deg)`;
+                    // Rotate the entire compass face, needle stays pointing up (north)
+                    this.compass.style.transform = `rotate(${compassRotation}deg)`;
                 });
+
+                // Debug logging for compass behavior (reduced frequency)
+                if (Math.round(heading) % 45 === 0) {
+                    this.log(`🧭 Device heading: ${Math.round(heading)}°, Compass rotation: ${Math.round(compassRotation)}°`);
+                }
 
                 // Update bearing display (less frequently for performance)
                 const roundedHeading = Math.round(heading);
@@ -535,7 +538,8 @@
             }
 
             checkNorthVibration(heading) {
-                // Check if we're pointing north (within threshold)
+                // Check if device is pointing north (heading close to 0°)
+                // Small heading values mean we're pointing north
                 const isPointingNorth = heading <= this.northThreshold || heading >= (360 - this.northThreshold);
                 const now = Date.now();
                 
@@ -591,19 +595,19 @@
                     case 'responsive':
                         this.updateThrottle = 8; // ~120fps
                         this.smoothingFactor = 0.1; // Minimal smoothing
-                        this.needle.style.transition = 'none'; // No CSS transitions
+                        this.compass.style.transition = 'border-color 0.2s ease, box-shadow 0.2s ease'; // No transform transitions
                         this.log('🏃 Ultra Responsive mode activated');
                         break;
                     case 'balanced':
                         this.updateThrottle = 16; // ~60fps
                         this.smoothingFactor = 0.5; // Moderate smoothing
-                        this.needle.style.transition = 'transform 0.02s linear';
+                        this.compass.style.transition = 'border-color 0.2s ease, box-shadow 0.2s ease, transform 0.02s linear';
                         this.log('⚖️ Balanced mode activated');
                         break;
                     case 'smooth':
                         this.updateThrottle = 33; // ~30fps
                         this.smoothingFactor = 0.8; // Heavy smoothing
-                        this.needle.style.transition = 'transform 0.1s ease-out';
+                        this.compass.style.transition = 'border-color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease-out';
                         this.log('🌊 Smooth mode activated');
                         break;
                 }

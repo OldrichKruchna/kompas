@@ -29,11 +29,12 @@ A simple, responsive HTML compass app that uses device orientation sensors to sh
 1. Open `index.html` in a mobile browser
 2. If prompted, grant permission for device orientation access
 3. Hold your device flat (parallel to the ground) for best accuracy
-4. The red needle points to magnetic North
-5. When pointing north (within 10°), the device will vibrate and the compass will glow red
-6. The bearing display shows your current heading in degrees and cardinal direction
-7. Click "Show Debug Info" to view API support status and real-time event logs
-8. Use the performance mode buttons to adjust responsiveness vs smoothness
+4. The red needle always points to magnetic North (upward on screen)
+5. The compass face rotates as you turn your device, keeping the needle pointing north
+6. When your device points north (within 10°), it will vibrate and the compass will glow red
+7. The bearing display shows your current heading in degrees and cardinal direction
+8. Click "Show Debug Info" to view API support status and real-time event logs
+9. Use the performance mode buttons to adjust responsiveness vs smoothness
 
 ## Technical Details
 
