@@ -87,9 +87,9 @@ To access debug info, click the "Show Debug Info" button at the bottom of the ap
 
 ### Performance Modes
 
-- **Ultra Responsive**: ~120fps updates, minimal smoothing, instant needle movement
-- **Balanced**: ~60fps updates, moderate smoothing, slight transition smoothing
-- **Smooth**: ~30fps updates, heavy smoothing, smooth transitions (default)
+- **Ultra Responsive**: ~120fps updates, no smoothing, instant movement
+- **Balanced**: ~60fps updates, light smoothing, minimal transitions (default)
+- **Smooth**: ~30fps updates, moderate smoothing, stable movement
 
 ## Troubleshooting
 
