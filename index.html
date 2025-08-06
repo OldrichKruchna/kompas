@@ -246,6 +246,41 @@
             cursor: pointer;
             margin-top: 10px;
         }
+
+        .crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 40px;
+            height: 40px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 15;
+        }
+
+        .crosshair::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 15%;
+            width: 70%;
+            height: 1px;
+            background: rgba(0, 0, 0, 0.7);
+            transform: translateY(-50%);
+            box-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
+        }
+
+        .crosshair::after {
+            content: '';
+            position: absolute;
+            top: 15%;
+            left: 50%;
+            width: 1px;
+            height: 70%;
+            background: rgba(0, 0, 0, 0.7);
+            transform: translateX(-50%);
+            box-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
+        }
     </style>
 </head>
 <body>
@@ -269,6 +304,7 @@
             
             <div class="needle" id="needle"></div>
             <div class="center-dot"></div>
+            <div class="crosshair"></div>
         </div>
         
         <div class="info">
@@ -326,9 +362,9 @@
                 // Performance optimization variables
                 this.lastUpdateTime = 0;
                 this.updateThrottle = 16; // ~60fps (16ms between updates)
-                this.smoothingFactor = 0.7; // For heading smoothing (lower = more responsive)
+                this.smoothingFactor = 0.3; // For heading smoothing (lower = more responsive)
                 this.lastSmoothedHeading = 0;
-                this.performanceMode = 'responsive'; // 'responsive' or 'smooth'
+                this.performanceMode = 'balanced'; // 'responsive', 'balanced', or 'smooth'
                 
                 this.init();
             }
@@ -475,23 +511,34 @@
                 // Normalize heading to 0-360
                 newHeading = ((newHeading % 360) + 360) % 360;
                 
-                // Skip smoothing in ultra responsive mode
-                if (this.performanceMode === 'responsive') {
+                // Skip smoothing in ultra responsive mode or for very light smoothing
+                if (this.performanceMode === 'responsive' || this.smoothingFactor < 0.3) {
                     this.lastSmoothedHeading = newHeading;
                     return newHeading;
                 }
                 
-                // Handle wrap-around (e.g., from 359° to 1°)
-                let diff = newHeading - this.lastSmoothedHeading;
-                if (diff > 180) {
-                    diff -= 360;
-                } else if (diff < -180) {
-                    diff += 360;
+                // First reading initialization
+                if (this.lastSmoothedHeading === 0) {
+                    this.lastSmoothedHeading = newHeading;
+                    return newHeading;
                 }
                 
-                // Apply exponential smoothing
-                this.lastSmoothedHeading += diff * (1 - this.smoothingFactor);
-                this.lastSmoothedHeading = ((this.lastSmoothedHeading % 360) + 360) % 360;
+                // Use circular interpolation for compass headings
+                // Convert to radians for proper circular math
+                const newRad = (newHeading * Math.PI) / 180;
+                const lastRad = (this.lastSmoothedHeading * Math.PI) / 180;
+                
+                // Calculate circular difference
+                let diffRad = newRad - lastRad;
+                if (diffRad > Math.PI) diffRad -= 2 * Math.PI;
+                if (diffRad < -Math.PI) diffRad += 2 * Math.PI;
+                
+                // Apply smoothing to the difference
+                const smoothedDiffRad = diffRad * (1 - this.smoothingFactor);
+                const smoothedRad = lastRad + smoothedDiffRad;
+                
+                // Convert back to degrees and normalize
+                this.lastSmoothedHeading = ((smoothedRad * 180) / Math.PI + 360) % 360;
                 
                 return this.lastSmoothedHeading;
             }
@@ -594,21 +641,21 @@
                 switch (mode) {
                     case 'responsive':
                         this.updateThrottle = 8; // ~120fps
-                        this.smoothingFactor = 0.1; // Minimal smoothing
+                        this.smoothingFactor = 0.1; // Minimal smoothing (will be bypassed)
                         this.compass.style.transition = 'border-color 0.2s ease, box-shadow 0.2s ease'; // No transform transitions
-                        this.log('🏃 Ultra Responsive mode activated');
+                        this.log('🏃 Ultra Responsive mode activated - no smoothing');
                         break;
                     case 'balanced':
                         this.updateThrottle = 16; // ~60fps
-                        this.smoothingFactor = 0.5; // Moderate smoothing
-                        this.compass.style.transition = 'border-color 0.2s ease, box-shadow 0.2s ease, transform 0.02s linear';
-                        this.log('⚖️ Balanced mode activated');
+                        this.smoothingFactor = 0.3; // Light smoothing
+                        this.compass.style.transition = 'border-color 0.2s ease, box-shadow 0.2s ease, transform 0.01s linear';
+                        this.log('⚖️ Balanced mode activated - light smoothing');
                         break;
                     case 'smooth':
                         this.updateThrottle = 33; // ~30fps
-                        this.smoothingFactor = 0.8; // Heavy smoothing
-                        this.compass.style.transition = 'border-color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease-out';
-                        this.log('🌊 Smooth mode activated');
+                        this.smoothingFactor = 0.6; // Moderate smoothing (reduced from 0.8)
+                        this.compass.style.transition = 'border-color 0.2s ease, box-shadow 0.2s ease, transform 0.05s ease-out';
+                        this.log('🌊 Smooth mode activated - moderate smoothing');
                         break;
                 }
                 

@@ -11,6 +11,7 @@ A simple, responsive HTML compass app that uses device orientation sensors to sh
 - **Permission handling** for iOS 13+ devices that require explicit permission
 - **Multiple sensor support** including DeviceOrientationEvent and Geolocation API
 - **Visual compass face** with cardinal directions and degree markings
+- **Static crosshair** in the center to highlight compass rotation
 - **Bearing display** showing exact degree and cardinal direction
 - **Error handling** with user-friendly messages
 - **Optimized performance** with 60fps updates and hardware acceleration
@@ -31,10 +32,11 @@ A simple, responsive HTML compass app that uses device orientation sensors to sh
 3. Hold your device flat (parallel to the ground) for best accuracy
 4. The red needle always points to magnetic North (upward on screen)
 5. The compass face rotates as you turn your device, keeping the needle pointing north
-6. When your device points north (within 10°), it will vibrate and the compass will glow red
-7. The bearing display shows your current heading in degrees and cardinal direction
-8. Click "Show Debug Info" to view API support status and real-time event logs
-9. Use the performance mode buttons to adjust responsiveness vs smoothness
+6. A small crosshair in the center helps visualize the compass rotation
+7. When your device points north (within 10°), it will vibrate and the compass will glow red
+8. The bearing display shows your current heading in degrees and cardinal direction
+9. Click "Show Debug Info" to view API support status and real-time event logs
+10. Use the performance mode buttons to adjust responsiveness vs smoothness
 
 ## Technical Details
 
@@ -85,9 +87,9 @@ To access debug info, click the "Show Debug Info" button at the bottom of the ap
 
 ### Performance Modes
 
-- **Ultra Responsive**: ~120fps updates, minimal smoothing, instant needle movement
-- **Balanced**: ~60fps updates, moderate smoothing, slight transition smoothing
-- **Smooth**: ~30fps updates, heavy smoothing, smooth transitions (default)
+- **Ultra Responsive**: ~120fps updates, no smoothing, instant movement
+- **Balanced**: ~60fps updates, light smoothing, minimal transitions (default)
+- **Smooth**: ~30fps updates, moderate smoothing, stable movement
 
 ## Troubleshooting
 
