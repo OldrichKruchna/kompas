@@ -5,6 +5,8 @@ A simple, responsive HTML compass app that uses device orientation sensors to sh
 ## Features
 
 - **Real-time compass needle** that rotates based on device orientation
+- **Haptic feedback** - device vibrates when pointing north (within 10°)
+- **Visual north indicator** - compass glows red and pulses when north is detected
 - **Responsive design** that works on all screen sizes
 - **Permission handling** for iOS 13+ devices that require explicit permission
 - **Multiple sensor support** including DeviceOrientationEvent and Geolocation API
@@ -25,7 +27,8 @@ A simple, responsive HTML compass app that uses device orientation sensors to sh
 2. If prompted, grant permission for device orientation access
 3. Hold your device flat (parallel to the ground) for best accuracy
 4. The red needle points to magnetic North
-5. The bearing display shows your current heading in degrees and cardinal direction
+5. When pointing north (within 10°), the device will vibrate and the compass will glow red
+6. The bearing display shows your current heading in degrees and cardinal direction
 
 ## Technical Details
 
@@ -34,6 +37,7 @@ A simple, responsive HTML compass app that uses device orientation sensors to sh
 - **DeviceOrientationEvent**: Primary source for device orientation
 - **DeviceOrientationAbsoluteEvent**: Preferred for absolute orientation
 - **Geolocation API**: Fallback for devices with GPS compass
+- **Vibration API**: Provides haptic feedback when north is detected
 - **Permission API**: For iOS 13+ permission requests
 
 ### Sensor Data Processing
@@ -63,6 +67,8 @@ Simply open `index.html` in a web browser. For testing device orientation:
 - **Inaccurate readings**: Keep device flat and away from magnetic interference
 - **Permission denied**: Check browser settings and reload the page
 - **iOS issues**: Make sure to tap the permission button when prompted
+- **No vibration**: Ensure device supports vibration API and is not in silent mode
+- **Vibration too frequent**: There's a 2-second cooldown between vibrations when pointing north
 
 ## License
 
