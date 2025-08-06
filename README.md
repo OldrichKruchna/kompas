@@ -13,7 +13,9 @@ A simple, responsive HTML compass app that uses device orientation sensors to sh
 - **Visual compass face** with cardinal directions and degree markings
 - **Bearing display** showing exact degree and cardinal direction
 - **Error handling** with user-friendly messages
-- **Smooth animations** for needle movement
+- **Optimized performance** with 60fps updates and hardware acceleration
+- **Multiple performance modes** (Ultra Responsive, Balanced, Smooth)
+- **Advanced smoothing algorithms** to reduce sensor noise while maintaining responsiveness
 - **Debug panel** with real-time API status and event logging for troubleshooting
 
 ## Browser Compatibility
@@ -31,6 +33,7 @@ A simple, responsive HTML compass app that uses device orientation sensors to sh
 5. When pointing north (within 10°), the device will vibrate and the compass will glow red
 6. The bearing display shows your current heading in degrees and cardinal direction
 7. Click "Show Debug Info" to view API support status and real-time event logs
+8. Use the performance mode buttons to adjust responsiveness vs smoothness
 
 ## Technical Details
 
@@ -46,8 +49,11 @@ A simple, responsive HTML compass app that uses device orientation sensors to sh
 
 - Handles different browser implementations (`webkitCompassHeading` vs `alpha`)
 - Normalizes heading values to 0-360 degree range
-- Provides smooth transitions with CSS animations
+- Provides smooth transitions with CSS animations and hardware acceleration
 - Accounts for different coordinate systems across platforms
+- Uses requestAnimationFrame for 60fps updates
+- Implements exponential smoothing to reduce sensor noise
+- Offers multiple performance modes for different use cases
 
 ### Security Features
 
@@ -71,8 +77,16 @@ The app includes a comprehensive debug panel to help troubleshoot issues:
 - **Real-time Status**: Displays current heading, vibration history, and device state
 - **Event Logging**: Logs all orientation events, permission requests, and errors
 - **Platform Detection**: Identifies iOS vs Android and shows user agent info
+- **Performance Controls**: Switch between Ultra Responsive, Balanced, and Smooth modes
+- **Performance Metrics**: Shows update frequency, smoothing factor, and performance mode
 
 To access debug info, click the "Show Debug Info" button at the bottom of the app.
+
+### Performance Modes
+
+- **Ultra Responsive**: ~120fps updates, minimal smoothing, instant needle movement
+- **Balanced**: ~60fps updates, moderate smoothing, slight transition smoothing
+- **Smooth**: ~30fps updates, heavy smoothing, smooth transitions (default)
 
 ## Troubleshooting
 
@@ -83,6 +97,8 @@ To access debug info, click the "Show Debug Info" button at the bottom of the ap
 - **No vibration**: Ensure device supports vibration API and is not in silent mode
 - **Vibration too frequent**: There's a 2-second cooldown between vibrations when pointing north
 - **iOS vibration issues**: Check debug panel - iOS may not support vibration in web apps or when device is in silent mode
+- **Sluggish response**: Try "Ultra Responsive" mode in debug panel for faster updates
+- **Jittery needle**: Use "Smooth" mode for more stable movement with sensor noise
 
 ## License
 
