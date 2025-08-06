@@ -14,6 +14,7 @@ A simple, responsive HTML compass app that uses device orientation sensors to sh
 - **Bearing display** showing exact degree and cardinal direction
 - **Error handling** with user-friendly messages
 - **Smooth animations** for needle movement
+- **Debug panel** with real-time API status and event logging for troubleshooting
 
 ## Browser Compatibility
 
@@ -29,6 +30,7 @@ A simple, responsive HTML compass app that uses device orientation sensors to sh
 4. The red needle points to magnetic North
 5. When pointing north (within 10°), the device will vibrate and the compass will glow red
 6. The bearing display shows your current heading in degrees and cardinal direction
+7. Click "Show Debug Info" to view API support status and real-time event logs
 
 ## Technical Details
 
@@ -61,6 +63,17 @@ Simply open `index.html` in a web browser. For testing device orientation:
 2. Test on actual mobile devices for real sensor data
 3. Ensure HTTPS when testing on remote devices
 
+## Debug Features
+
+The app includes a comprehensive debug panel to help troubleshoot issues:
+
+- **API Support Check**: Shows which APIs are available on your device
+- **Real-time Status**: Displays current heading, vibration history, and device state
+- **Event Logging**: Logs all orientation events, permission requests, and errors
+- **Platform Detection**: Identifies iOS vs Android and shows user agent info
+
+To access debug info, click the "Show Debug Info" button at the bottom of the app.
+
 ## Troubleshooting
 
 - **No orientation data**: Ensure device has orientation sensors and permissions are granted
@@ -69,6 +82,7 @@ Simply open `index.html` in a web browser. For testing device orientation:
 - **iOS issues**: Make sure to tap the permission button when prompted
 - **No vibration**: Ensure device supports vibration API and is not in silent mode
 - **Vibration too frequent**: There's a 2-second cooldown between vibrations when pointing north
+- **iOS vibration issues**: Check debug panel - iOS may not support vibration in web apps or when device is in silent mode
 
 ## License
 

@@ -189,6 +189,61 @@
         .permission-btn:hover {
             background: #45a049;
         }
+
+        .debug-panel {
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #333;
+        }
+
+        .debug-panel h4 {
+            color: #ffff00;
+            margin: 0 0 10px 0;
+            font-size: 14px;
+        }
+
+        .debug-item {
+            margin: 5px 0;
+            padding: 2px 0;
+        }
+
+        .debug-item.success {
+            color: #00ff00;
+        }
+
+        .debug-item.error {
+            color: #ff6666;
+        }
+
+        .debug-item.warning {
+            color: #ffaa00;
+        }
+
+        .debug-log {
+            max-height: 100px;
+            overflow-y: auto;
+            border-top: 1px solid #333;
+            padding-top: 5px;
+            margin-top: 10px;
+        }
+
+        .debug-toggle {
+            background: #333;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            font-size: 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -227,6 +282,17 @@
         
         <div id="error-message" class="error" style="display: none;"></div>
         <button id="permission-btn" class="permission-btn" style="display: none;">Request Orientation Permission</button>
+        
+        <button id="debug-toggle" class="debug-toggle">Show Debug Info</button>
+        <div id="debug-panel" class="debug-panel" style="display: none;">
+            <h4>🔧 Debug Information</h4>
+            <div id="debug-apis"></div>
+            <div id="debug-status"></div>
+            <div class="debug-log">
+                <strong>Event Log:</strong>
+                <div id="debug-log"></div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -239,75 +305,101 @@
                 this.permissionBtn = document.getElementById('permission-btn');
                 this.compass = document.getElementById('compass');
                 
+                // Debug elements
+                this.debugToggle = document.getElementById('debug-toggle');
+                this.debugPanel = document.getElementById('debug-panel');
+                this.debugApis = document.getElementById('debug-apis');
+                this.debugStatus = document.getElementById('debug-status');
+                this.debugLog = document.getElementById('debug-log');
+                
                 this.currentHeading = 0;
                 this.isSupported = false;
                 this.lastNorthVibration = 0;
                 this.northThreshold = 10; // degrees within north to trigger vibration
                 this.vibrationCooldown = 2000; // 2 seconds between vibrations
+                this.debugMessages = [];
                 
                 this.init();
             }
 
             init() {
+                this.setupDebug();
                 this.checkSupport();
                 this.setupEventListeners();
             }
 
             checkSupport() {
+                this.log('🔍 Checking device orientation support...');
                 if ('DeviceOrientationEvent' in window) {
                     this.isSupported = true;
+                    this.log('✅ DeviceOrientationEvent supported');
                     this.requestPermissions();
                 } else {
+                    this.log('❌ DeviceOrientationEvent not supported');
                     this.showError('Device orientation is not supported on this device.');
                 }
             }
 
             async requestPermissions() {
+                this.log('🔐 Checking permission requirements...');
                 // For iOS 13+ devices
                 if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    this.log('📱 iOS device detected - permission required');
                     this.permissionBtn.style.display = 'block';
                     this.status.textContent = 'Permission required for device orientation';
                 } else {
+                    this.log('🤖 Non-iOS device - starting directly');
                     // For other devices, start listening directly
                     this.startListening();
                 }
             }
 
             async handlePermissionRequest() {
+                this.log('👆 User clicked permission button');
                 try {
+                    this.log('🔑 Requesting DeviceOrientation permission...');
                     const permission = await DeviceOrientationEvent.requestPermission();
+                    this.log(`📋 Permission result: ${permission}`);
                     if (permission === 'granted') {
+                        this.log('✅ Permission granted!');
                         this.permissionBtn.style.display = 'none';
                         this.startListening();
                     } else {
+                        this.log('❌ Permission denied');
                         this.showError('Permission denied for device orientation');
                     }
                 } catch (error) {
+                    this.log(`💥 Permission error: ${error.message}`);
                     this.showError('Error requesting permission: ' + error.message);
                 }
             }
 
             startListening() {
+                this.log('🎧 Starting orientation listeners...');
                 this.status.textContent = 'Starting compass...';
                 
                 window.addEventListener('deviceorientationabsolute', (event) => {
+                    this.log('📡 deviceorientationabsolute event received');
                     this.handleOrientation(event);
                 });
 
                 window.addEventListener('deviceorientation', (event) => {
+                    this.log('📡 deviceorientation event received');
                     this.handleOrientation(event);
                 });
 
                 // Fallback for devices that might support geolocation heading
                 if ('geolocation' in navigator) {
+                    this.log('🌍 Setting up geolocation watching...');
                     navigator.geolocation.watchPosition(
                         (position) => {
                             if (position.coords.heading !== null && position.coords.heading !== undefined) {
+                                this.log(`🌍 Geolocation heading: ${position.coords.heading}°`);
                                 this.updateCompass(position.coords.heading);
                             }
                         },
                         (error) => {
-                            console.log('Geolocation error:', error);
+                            this.log(`🌍 Geolocation error: ${error.message}`);
                         },
                         { enableHighAccuracy: true }
                     );
@@ -315,6 +407,7 @@
 
                 setTimeout(() => {
                     if (this.currentHeading === 0) {
+                        this.log('⏰ No orientation data received after 3 seconds');
                         this.status.textContent = 'Waiting for device movement...';
                     }
                 }, 3000);
@@ -322,18 +415,27 @@
 
             handleOrientation(event) {
                 let heading = null;
+                let source = 'unknown';
 
                 // Try different methods to get the heading
                 if (event.webkitCompassHeading !== undefined) {
                     // iOS Safari
                     heading = event.webkitCompassHeading;
+                    source = 'webkitCompassHeading';
                 } else if (event.alpha !== null) {
                     // Android and other browsers
                     heading = 360 - event.alpha;
+                    source = 'alpha';
                 }
 
                 if (heading !== null) {
+                    // Log periodically (every 30 readings to avoid spam)
+                    if (Math.round(heading) % 30 === 0) {
+                        this.log(`📍 Orientation update: ${Math.round(heading)}° (source: ${source})`);
+                    }
                     this.updateCompass(heading);
+                } else {
+                    this.log('⚠️ No heading data in orientation event');
                 }
             }
 
@@ -386,17 +488,20 @@
             }
 
             vibrate() {
+                this.log('📳 Attempting to vibrate...');
                 // Check if vibration API is supported
                 if ('vibrate' in navigator) {
                     try {
                         // Vibrate for 200ms
-                        navigator.vibrate(200);
-                        console.log('Vibration triggered - pointing north!');
+                        const result = navigator.vibrate(200);
+                        this.log(`📳 Vibrate call result: ${result}`);
+                        this.log('✅ Vibration triggered - pointing north!');
+                        this.updateDebugInfo(); // Update debug info after vibration
                     } catch (error) {
-                        console.log('Vibration failed:', error);
+                        this.log(`💥 Vibration failed: ${error.message}`);
                     }
                 } else {
-                    console.log('Vibration API not supported');
+                    this.log('❌ Vibration API not supported');
                 }
             }
 
@@ -418,13 +523,88 @@
                 this.status.textContent = 'Error occurred';
             }
 
+            setupDebug() {
+                this.log('🚀 Compass app starting...');
+                this.checkApiSupport();
+                this.updateDebugInfo();
+            }
+
+            checkApiSupport() {
+                const apis = {
+                    'DeviceOrientationEvent': 'DeviceOrientationEvent' in window,
+                    'DeviceMotionEvent': 'DeviceMotionEvent' in window,
+                    'Geolocation': 'geolocation' in navigator,
+                    'Vibration API': 'vibrate' in navigator,
+                    'Permission API': 'permissions' in navigator,
+                    'HTTPS': window.location.protocol === 'https:',
+                    'User Agent': navigator.userAgent.includes('iPhone') ? 'iOS' : 
+                                 navigator.userAgent.includes('Android') ? 'Android' : 'Other',
+                    'DeviceOrientationEvent.requestPermission': typeof DeviceOrientationEvent !== 'undefined' && 
+                                                               typeof DeviceOrientationEvent.requestPermission === 'function'
+                };
+
+                let apiHtml = '<strong>API Support:</strong><br>';
+                for (const [api, supported] of Object.entries(apis)) {
+                    const status = typeof supported === 'boolean' ? (supported ? '✅' : '❌') : `ℹ️ ${supported}`;
+                    const className = typeof supported === 'boolean' ? (supported ? 'success' : 'error') : 'warning';
+                    apiHtml += `<div class="debug-item ${className}">${api}: ${status}</div>`;
+                }
+
+                this.debugApis.innerHTML = apiHtml;
+                this.log(`API check complete. iOS permission required: ${apis['DeviceOrientationEvent.requestPermission']}`);
+            }
+
+            updateDebugInfo() {
+                const info = {
+                    'Current Heading': `${Math.round(this.currentHeading)}°`,
+                    'Last Vibration': this.lastNorthVibration ? new Date(this.lastNorthVibration).toLocaleTimeString() : 'Never',
+                    'Pointing North': this.currentHeading <= this.northThreshold || this.currentHeading >= (360 - this.northThreshold) ? '✅' : '❌',
+                    'Page Visibility': document.visibilityState,
+                    'Screen Orientation': screen.orientation ? screen.orientation.angle + '°' : 'Unknown'
+                };
+
+                let statusHtml = '<strong>Current Status:</strong><br>';
+                for (const [key, value] of Object.entries(info)) {
+                    statusHtml += `<div class="debug-item">${key}: ${value}</div>`;
+                }
+
+                this.debugStatus.innerHTML = statusHtml;
+            }
+
+            log(message) {
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = `[${timestamp}] ${message}`;
+                this.debugMessages.push(logEntry);
+                
+                // Keep only last 20 messages
+                if (this.debugMessages.length > 20) {
+                    this.debugMessages.shift();
+                }
+                
+                this.debugLog.innerHTML = this.debugMessages.map(msg => `<div>${msg}</div>`).join('');
+                this.debugLog.scrollTop = this.debugLog.scrollHeight;
+                
+                // Also log to console
+                console.log(logEntry);
+            }
+
             setupEventListeners() {
                 this.permissionBtn.addEventListener('click', () => {
                     this.handlePermissionRequest();
                 });
 
+                this.debugToggle.addEventListener('click', () => {
+                    const isVisible = this.debugPanel.style.display !== 'none';
+                    this.debugPanel.style.display = isVisible ? 'none' : 'block';
+                    this.debugToggle.textContent = isVisible ? 'Show Debug Info' : 'Hide Debug Info';
+                    if (!isVisible) {
+                        this.updateDebugInfo();
+                    }
+                });
+
                 // Handle page visibility changes
                 document.addEventListener('visibilitychange', () => {
+                    this.log(`Page visibility changed: ${document.visibilityState}`);
                     if (document.visibilityState === 'visible' && this.isSupported) {
                         // Restart listening when page becomes visible
                         setTimeout(() => this.startListening(), 100);
@@ -435,7 +615,15 @@
 
         // Initialize the compass when the page loads
         document.addEventListener('DOMContentLoaded', () => {
-            new MobileCompass();
+            const compass = new MobileCompass();
+            window.compassInstance = compass; // Make accessible for device motion
+            
+            // Update debug info periodically
+            setInterval(() => {
+                if (compass.debugPanel.style.display !== 'none') {
+                    compass.updateDebugInfo();
+                }
+            }, 1000);
         });
 
         // Also handle device motion for additional data
@@ -443,7 +631,9 @@
             window.addEventListener('devicemotion', (event) => {
                 // This could be used for additional compass stabilization
                 // Currently just logging for debugging
-                console.log('Device motion detected');
+                if (window.compassInstance) {
+                    window.compassInstance.log('📱 Device motion detected');
+                }
             });
         }
     </script>
