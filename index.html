@@ -43,7 +43,8 @@
             background: radial-gradient(circle, #ffffff, #f0f0f0);
             border: 8px solid #333;
             box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
-            transition: all 0.3s ease-out;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            will-change: border-color, box-shadow;
         }
 
         .compass.north-detected {
@@ -108,7 +109,8 @@
             height: 120px;
             transform: translate(-50%, -50%);
             transform-origin: center center;
-            transition: transform 0.3s ease-out;
+            transition: transform 0.05s linear;
+            will-change: transform;
         }
 
         .needle::before {
@@ -288,6 +290,14 @@
             <h4>🔧 Debug Information</h4>
             <div id="debug-apis"></div>
             <div id="debug-status"></div>
+            
+            <div style="margin: 10px 0;">
+                <strong>Performance Settings:</strong><br>
+                <button id="mode-responsive" class="debug-toggle" style="font-size: 10px; padding: 4px 8px; margin: 2px;">Ultra Responsive</button>
+                <button id="mode-balanced" class="debug-toggle" style="font-size: 10px; padding: 4px 8px; margin: 2px;">Balanced</button>
+                <button id="mode-smooth" class="debug-toggle" style="font-size: 10px; padding: 4px 8px; margin: 2px;">Smooth</button>
+            </div>
+            
             <div class="debug-log">
                 <strong>Event Log:</strong>
                 <div id="debug-log"></div>
@@ -318,6 +328,13 @@
                 this.northThreshold = 10; // degrees within north to trigger vibration
                 this.vibrationCooldown = 2000; // 2 seconds between vibrations
                 this.debugMessages = [];
+                
+                // Performance optimization variables
+                this.lastUpdateTime = 0;
+                this.updateThrottle = 16; // ~60fps (16ms between updates)
+                this.smoothingFactor = 0.7; // For heading smoothing (lower = more responsive)
+                this.lastSmoothedHeading = 0;
+                this.performanceMode = 'responsive'; // 'responsive' or 'smooth'
                 
                 this.init();
             }
@@ -378,42 +395,60 @@
                 this.log('🎧 Starting orientation listeners...');
                 this.status.textContent = 'Starting compass...';
                 
-                window.addEventListener('deviceorientationabsolute', (event) => {
-                    this.log('📡 deviceorientationabsolute event received');
+                // Use passive listeners for better performance
+                const orientationHandler = (event) => {
                     this.handleOrientation(event);
-                });
+                };
 
-                window.addEventListener('deviceorientation', (event) => {
-                    this.log('📡 deviceorientation event received');
-                    this.handleOrientation(event);
-                });
+                // Prefer absolute orientation for better accuracy
+                window.addEventListener('deviceorientationabsolute', orientationHandler, { passive: true });
+                window.addEventListener('deviceorientation', orientationHandler, { passive: true });
 
-                // Fallback for devices that might support geolocation heading
+                // Store handler reference for potential cleanup
+                this.orientationHandler = orientationHandler;
+
+                // High-frequency geolocation for devices with GPS compass
                 if ('geolocation' in navigator) {
-                    this.log('🌍 Setting up geolocation watching...');
-                    navigator.geolocation.watchPosition(
+                    this.log('🌍 Setting up high-frequency geolocation...');
+                    this.watchId = navigator.geolocation.watchPosition(
                         (position) => {
                             if (position.coords.heading !== null && position.coords.heading !== undefined) {
-                                this.log(`🌍 Geolocation heading: ${position.coords.heading}°`);
-                                this.updateCompass(position.coords.heading);
+                                // Only use geolocation heading if no orientation data received
+                                if (this.currentHeading === 0) {
+                                    this.log(`🌍 Using geolocation heading: ${position.coords.heading}°`);
+                                    this.updateCompass(position.coords.heading);
+                                }
                             }
                         },
                         (error) => {
                             this.log(`🌍 Geolocation error: ${error.message}`);
                         },
-                        { enableHighAccuracy: true }
+                        { 
+                            enableHighAccuracy: true,
+                            maximumAge: 100, // Accept cached positions up to 100ms old
+                            timeout: 5000
+                        }
                     );
                 }
 
+                // Reduce initial delay
                 setTimeout(() => {
                     if (this.currentHeading === 0) {
-                        this.log('⏰ No orientation data received after 3 seconds');
+                        this.log('⏰ No orientation data received after 2 seconds');
                         this.status.textContent = 'Waiting for device movement...';
                     }
-                }, 3000);
+                }, 2000);
             }
 
             handleOrientation(event) {
+                const now = performance.now();
+                
+                // Throttle updates for better performance
+                if (now - this.lastUpdateTime < this.updateThrottle) {
+                    return;
+                }
+                this.lastUpdateTime = now;
+
                 let heading = null;
                 let source = 'unknown';
 
@@ -429,14 +464,42 @@
                 }
 
                 if (heading !== null) {
-                    // Log periodically (every 30 readings to avoid spam)
-                    if (Math.round(heading) % 30 === 0) {
-                        this.log(`📍 Orientation update: ${Math.round(heading)}° (source: ${source})`);
+                    // Apply smoothing to reduce jitter
+                    const smoothedHeading = this.smoothHeading(heading);
+                    
+                    // Log periodically (every 60 readings to reduce spam)
+                    if (Math.round(smoothedHeading) % 60 === 0) {
+                        this.log(`📍 Orientation update: ${Math.round(smoothedHeading)}° (source: ${source})`);
                     }
-                    this.updateCompass(heading);
+                    this.updateCompass(smoothedHeading);
                 } else {
                     this.log('⚠️ No heading data in orientation event');
                 }
+            }
+
+            smoothHeading(newHeading) {
+                // Normalize heading to 0-360
+                newHeading = ((newHeading % 360) + 360) % 360;
+                
+                // Skip smoothing in ultra responsive mode
+                if (this.performanceMode === 'responsive') {
+                    this.lastSmoothedHeading = newHeading;
+                    return newHeading;
+                }
+                
+                // Handle wrap-around (e.g., from 359° to 1°)
+                let diff = newHeading - this.lastSmoothedHeading;
+                if (diff > 180) {
+                    diff -= 360;
+                } else if (diff < -180) {
+                    diff += 360;
+                }
+                
+                // Apply exponential smoothing
+                this.lastSmoothedHeading += diff * (1 - this.smoothingFactor);
+                this.lastSmoothedHeading = ((this.lastSmoothedHeading % 360) + 360) % 360;
+                
+                return this.lastSmoothedHeading;
             }
 
             updateCompass(heading) {
@@ -444,11 +507,15 @@
                 heading = ((heading % 360) + 360) % 360;
                 this.currentHeading = heading;
 
-                // Update needle rotation
-                this.needle.style.transform = `translate(-50%, -50%) rotate(${heading}deg)`;
+                // Use requestAnimationFrame for smooth updates
+                requestAnimationFrame(() => {
+                    // Update needle rotation with hardware acceleration
+                    this.needle.style.transform = `translate(-50%, -50%) rotate(${heading}deg)`;
+                });
 
-                // Update bearing display
-                this.bearing.textContent = `Bearing: ${Math.round(heading)}°`;
+                // Update bearing display (less frequently for performance)
+                const roundedHeading = Math.round(heading);
+                this.bearing.textContent = `Bearing: ${roundedHeading}°`;
 
                 // Update status with direction
                 const direction = this.getDirection(heading);
@@ -517,6 +584,33 @@
                 return directions[index];
             }
 
+            setPerformanceMode(mode) {
+                this.performanceMode = mode;
+                
+                switch (mode) {
+                    case 'responsive':
+                        this.updateThrottle = 8; // ~120fps
+                        this.smoothingFactor = 0.1; // Minimal smoothing
+                        this.needle.style.transition = 'none'; // No CSS transitions
+                        this.log('🏃 Ultra Responsive mode activated');
+                        break;
+                    case 'balanced':
+                        this.updateThrottle = 16; // ~60fps
+                        this.smoothingFactor = 0.5; // Moderate smoothing
+                        this.needle.style.transition = 'transform 0.02s linear';
+                        this.log('⚖️ Balanced mode activated');
+                        break;
+                    case 'smooth':
+                        this.updateThrottle = 33; // ~30fps
+                        this.smoothingFactor = 0.8; // Heavy smoothing
+                        this.needle.style.transition = 'transform 0.1s ease-out';
+                        this.log('🌊 Smooth mode activated');
+                        break;
+                }
+                
+                this.updateDebugInfo();
+            }
+
             showError(message) {
                 this.errorMessage.textContent = message;
                 this.errorMessage.style.display = 'block';
@@ -560,7 +654,10 @@
                     'Last Vibration': this.lastNorthVibration ? new Date(this.lastNorthVibration).toLocaleTimeString() : 'Never',
                     'Pointing North': this.currentHeading <= this.northThreshold || this.currentHeading >= (360 - this.northThreshold) ? '✅' : '❌',
                     'Page Visibility': document.visibilityState,
-                    'Screen Orientation': screen.orientation ? screen.orientation.angle + '°' : 'Unknown'
+                    'Screen Orientation': screen.orientation ? screen.orientation.angle + '°' : 'Unknown',
+                    'Performance Mode': this.performanceMode,
+                    'Update Throttle': `${this.updateThrottle}ms`,
+                    'Smoothing Factor': this.smoothingFactor
                 };
 
                 let statusHtml = '<strong>Current Status:</strong><br>';
@@ -600,6 +697,17 @@
                     if (!isVisible) {
                         this.updateDebugInfo();
                     }
+                });
+
+                // Performance mode controls
+                document.getElementById('mode-responsive').addEventListener('click', () => {
+                    this.setPerformanceMode('responsive');
+                });
+                document.getElementById('mode-balanced').addEventListener('click', () => {
+                    this.setPerformanceMode('balanced');
+                });
+                document.getElementById('mode-smooth').addEventListener('click', () => {
+                    this.setPerformanceMode('smooth');
                 });
 
                 // Handle page visibility changes
