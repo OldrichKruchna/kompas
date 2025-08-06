@@ -43,7 +43,19 @@
             background: radial-gradient(circle, #ffffff, #f0f0f0);
             border: 8px solid #333;
             box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
-            transition: transform 0.3s ease-out;
+            transition: all 0.3s ease-out;
+        }
+
+        .compass.north-detected {
+            border-color: #d32f2f;
+            box-shadow: 0 0 30px rgba(211, 47, 47, 0.5);
+            animation: northPulse 0.5s ease-in-out;
+        }
+
+        @keyframes northPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
         }
 
         .compass-face {
@@ -225,9 +237,13 @@
                 this.status = document.getElementById('status');
                 this.errorMessage = document.getElementById('error-message');
                 this.permissionBtn = document.getElementById('permission-btn');
+                this.compass = document.getElementById('compass');
                 
                 this.currentHeading = 0;
                 this.isSupported = false;
+                this.lastNorthVibration = 0;
+                this.northThreshold = 10; // degrees within north to trigger vibration
+                this.vibrationCooldown = 2000; // 2 seconds between vibrations
                 
                 this.init();
             }
@@ -334,10 +350,54 @@
 
                 // Update status with direction
                 const direction = this.getDirection(heading);
-                this.status.textContent = `Pointing ${direction}`;
+                const isPointingNorth = heading <= this.northThreshold || heading >= (360 - this.northThreshold);
+                
+                if (isPointingNorth) {
+                    this.status.textContent = `🧭 Pointing ${direction} - North Found!`;
+                } else {
+                    this.status.textContent = `Pointing ${direction}`;
+                }
+
+                // Check for north direction and vibrate
+                this.checkNorthVibration(heading);
 
                 // Hide error message if showing
                 this.errorMessage.style.display = 'none';
+            }
+
+            checkNorthVibration(heading) {
+                // Check if we're pointing north (within threshold)
+                const isPointingNorth = heading <= this.northThreshold || heading >= (360 - this.northThreshold);
+                const now = Date.now();
+                
+                if (isPointingNorth) {
+                    // Add visual feedback
+                    this.compass.classList.add('north-detected');
+                    
+                    // Vibrate only if cooldown has passed
+                    if ((now - this.lastNorthVibration) > this.vibrationCooldown) {
+                        this.vibrate();
+                        this.lastNorthVibration = now;
+                    }
+                } else {
+                    // Remove visual feedback when not pointing north
+                    this.compass.classList.remove('north-detected');
+                }
+            }
+
+            vibrate() {
+                // Check if vibration API is supported
+                if ('vibrate' in navigator) {
+                    try {
+                        // Vibrate for 200ms
+                        navigator.vibrate(200);
+                        console.log('Vibration triggered - pointing north!');
+                    } catch (error) {
+                        console.log('Vibration failed:', error);
+                    }
+                } else {
+                    console.log('Vibration API not supported');
+                }
             }
 
             getDirection(heading) {
