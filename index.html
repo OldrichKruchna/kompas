@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Compass</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            color: white;
+        }
+
+        .compass-container {
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .title {
+            font-size: 2rem;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .compass {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin: 0 auto 30px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #ffffff, #f0f0f0);
+            border: 8px solid #333;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease-out;
+        }
+
+        .compass-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+        }
+
+        .direction-marker {
+            position: absolute;
+            width: 2px;
+            height: 20px;
+            background: #333;
+            left: 50%;
+            transform-origin: bottom center;
+        }
+
+        .direction-marker.major {
+            height: 30px;
+            width: 3px;
+            background: #d32f2f;
+        }
+
+        .direction-marker.north {
+            top: 10px;
+            transform: translateX(-50%);
+            background: #d32f2f;
+            width: 4px;
+            height: 40px;
+        }
+
+        .direction-text {
+            position: absolute;
+            font-weight: bold;
+            font-size: 18px;
+            color: #333;
+        }
+
+        .north { top: 20px; left: 50%; transform: translateX(-50%); color: #d32f2f; }
+        .east { right: 20px; top: 50%; transform: translateY(-50%); }
+        .south { bottom: 20px; left: 50%; transform: translateX(-50%); }
+        .west { left: 20px; top: 50%; transform: translateY(-50%); }
+
+        .needle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 4px;
+            height: 120px;
+            transform: translate(-50%, -50%);
+            transform-origin: center center;
+            transition: transform 0.3s ease-out;
+        }
+
+        .needle::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 60px solid #d32f2f;
+            transform: translateX(-50%);
+        }
+
+        .needle::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 60px solid #333;
+            transform: translateX(-50%);
+        }
+
+        .center-dot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 12px;
+            height: 12px;
+            background: #333;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+        }
+
+        .info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            margin-top: 20px;
+        }
+
+        .bearing {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+
+        .status {
+            font-size: 1rem;
+            opacity: 0.8;
+        }
+
+        .error {
+            color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .permission-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+
+        .permission-btn:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="compass-container">
+        <h1 class="title">Mobile Compass</h1>
+        
+        <div class="compass" id="compass">
+            <div class="compass-face">
+                <!-- Direction markers -->
+                <div class="direction-marker north"></div>
+                <div class="direction-marker major" style="top: 10px; right: 50%; transform: translateX(50%) rotate(90deg);"></div>
+                <div class="direction-marker major" style="bottom: 10px; left: 50%; transform: translateX(-50%) rotate(180deg);"></div>
+                <div class="direction-marker major" style="top: 50%; left: 10px; transform: translateY(-50%) rotate(270deg);"></div>
+                
+                <!-- Minor direction markers -->
+                <div class="direction-marker" style="top: 10px; right: 30%; transform: translateX(50%) rotate(45deg);"></div>
+                <div class="direction-marker" style="top: 30%; right: 10px; transform: translateY(-50%) rotate(135deg);"></div>
+                <div class="direction-marker" style="bottom: 30%; right: 10px; transform: translateY(50%) rotate(225deg);"></div>
+                <div class="direction-marker" style="bottom: 10px; right: 30%; transform: translateX(50%) rotate(315deg);"></div>
+                
+                <!-- Direction labels -->
+                <div class="direction-text north">N</div>
+                <div class="direction-text east">E</div>
+                <div class="direction-text south">S</div>
+                <div class="direction-text west">W</div>
+            </div>
+            
+            <div class="needle" id="needle"></div>
+            <div class="center-dot"></div>
+        </div>
+        
+        <div class="info">
+            <div class="bearing" id="bearing">Bearing: ---°</div>
+            <div class="status" id="status">Waiting for orientation data...</div>
+        </div>
+        
+        <div id="error-message" class="error" style="display: none;"></div>
+        <button id="permission-btn" class="permission-btn" style="display: none;">Request Orientation Permission</button>
+    </div>
+
+    <script>
+        class MobileCompass {
+            constructor() {
+                this.needle = document.getElementById('needle');
+                this.bearing = document.getElementById('bearing');
+                this.status = document.getElementById('status');
+                this.errorMessage = document.getElementById('error-message');
+                this.permissionBtn = document.getElementById('permission-btn');
+                
+                this.currentHeading = 0;
+                this.isSupported = false;
+                
+                this.init();
+            }
+
+            init() {
+                this.checkSupport();
+                this.setupEventListeners();
+            }
+
+            checkSupport() {
+                if ('DeviceOrientationEvent' in window) {
+                    this.isSupported = true;
+                    this.requestPermissions();
+                } else {
+                    this.showError('Device orientation is not supported on this device.');
+                }
+            }
+
+            async requestPermissions() {
+                // For iOS 13+ devices
+                if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    this.permissionBtn.style.display = 'block';
+                    this.status.textContent = 'Permission required for device orientation';
+                } else {
+                    // For other devices, start listening directly
+                    this.startListening();
+                }
+            }
+
+            async handlePermissionRequest() {
+                try {
+                    const permission = await DeviceOrientationEvent.requestPermission();
+                    if (permission === 'granted') {
+                        this.permissionBtn.style.display = 'none';
+                        this.startListening();
+                    } else {
+                        this.showError('Permission denied for device orientation');
+                    }
+                } catch (error) {
+                    this.showError('Error requesting permission: ' + error.message);
+                }
+            }
+
+            startListening() {
+                this.status.textContent = 'Starting compass...';
+                
+                window.addEventListener('deviceorientationabsolute', (event) => {
+                    this.handleOrientation(event);
+                });
+
+                window.addEventListener('deviceorientation', (event) => {
+                    this.handleOrientation(event);
+                });
+
+                // Fallback for devices that might support geolocation heading
+                if ('geolocation' in navigator) {
+                    navigator.geolocation.watchPosition(
+                        (position) => {
+                            if (position.coords.heading !== null && position.coords.heading !== undefined) {
+                                this.updateCompass(position.coords.heading);
+                            }
+                        },
+                        (error) => {
+                            console.log('Geolocation error:', error);
+                        },
+                        { enableHighAccuracy: true }
+                    );
+                }
+
+                setTimeout(() => {
+                    if (this.currentHeading === 0) {
+                        this.status.textContent = 'Waiting for device movement...';
+                    }
+                }, 3000);
+            }
+
+            handleOrientation(event) {
+                let heading = null;
+
+                // Try different methods to get the heading
+                if (event.webkitCompassHeading !== undefined) {
+                    // iOS Safari
+                    heading = event.webkitCompassHeading;
+                } else if (event.alpha !== null) {
+                    // Android and other browsers
+                    heading = 360 - event.alpha;
+                }
+
+                if (heading !== null) {
+                    this.updateCompass(heading);
+                }
+            }
+
+            updateCompass(heading) {
+                // Normalize heading to 0-360
+                heading = ((heading % 360) + 360) % 360;
+                this.currentHeading = heading;
+
+                // Update needle rotation
+                this.needle.style.transform = `translate(-50%, -50%) rotate(${heading}deg)`;
+
+                // Update bearing display
+                this.bearing.textContent = `Bearing: ${Math.round(heading)}°`;
+
+                // Update status with direction
+                const direction = this.getDirection(heading);
+                this.status.textContent = `Pointing ${direction}`;
+
+                // Hide error message if showing
+                this.errorMessage.style.display = 'none';
+            }
+
+            getDirection(heading) {
+                const directions = [
+                    'North', 'NNE', 'NE', 'ENE',
+                    'East', 'ESE', 'SE', 'SSE',
+                    'South', 'SSW', 'SW', 'WSW',
+                    'West', 'WNW', 'NW', 'NNW'
+                ];
+                
+                const index = Math.round(heading / 22.5) % 16;
+                return directions[index];
+            }
+
+            showError(message) {
+                this.errorMessage.textContent = message;
+                this.errorMessage.style.display = 'block';
+                this.status.textContent = 'Error occurred';
+            }
+
+            setupEventListeners() {
+                this.permissionBtn.addEventListener('click', () => {
+                    this.handlePermissionRequest();
+                });
+
+                // Handle page visibility changes
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'visible' && this.isSupported) {
+                        // Restart listening when page becomes visible
+                        setTimeout(() => this.startListening(), 100);
+                    }
+                });
+            }
+        }
+
+        // Initialize the compass when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new MobileCompass();
+        });
+
+        // Also handle device motion for additional data
+        if ('DeviceMotionEvent' in window) {
+            window.addEventListener('devicemotion', (event) => {
+                // This could be used for additional compass stabilization
+                // Currently just logging for debugging
+                console.log('Device motion detected');
+            });
+        }
+    </script>
+</body>
+</html>
