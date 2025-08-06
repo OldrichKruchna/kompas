@@ -246,6 +246,41 @@
             cursor: pointer;
             margin-top: 10px;
         }
+
+        .crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 40px;
+            height: 40px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 15;
+        }
+
+        .crosshair::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 15%;
+            width: 70%;
+            height: 1px;
+            background: rgba(0, 0, 0, 0.7);
+            transform: translateY(-50%);
+            box-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
+        }
+
+        .crosshair::after {
+            content: '';
+            position: absolute;
+            top: 15%;
+            left: 50%;
+            width: 1px;
+            height: 70%;
+            background: rgba(0, 0, 0, 0.7);
+            transform: translateX(-50%);
+            box-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
+        }
     </style>
 </head>
 <body>
@@ -269,6 +304,7 @@
             
             <div class="needle" id="needle"></div>
             <div class="center-dot"></div>
+            <div class="crosshair"></div>
         </div>
         
         <div class="info">
